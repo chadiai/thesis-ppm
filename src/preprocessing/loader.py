@@ -12,14 +12,3 @@ def load_data():
     df = pd.read_csv(filepath, encoding='utf-8')
     print(f"- Loaded {len(df):,} rows.")
     return df
-
-
-def save_data(df):
-    """
-    Saves processed data, ensuring the directory exists.
-    """
-    config.DATA_PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
-    filepath = config.DATA_PROCESSED_DIR / config.PROCESSED_FILENAME
-
-    df.to_csv(filepath, index=False)
-    print(f"- Saved processed data to: {filepath}")

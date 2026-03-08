@@ -7,12 +7,16 @@ DATA_PROCESSED_DIR = DATA_DIR / "processed"
 REPORTS_DIR = PROJECT_DIR / "reports"
 FIGURES_DIR = REPORTS_DIR / "figures"
 
+
+RAW_FILENAME = "TJSP-BL-event-log.csv"
 TRANSLATED_FILENAME = "tjsp_translated.csv"
 FEATURED_FILENAME = "tjsp_features.csv"
 MODEL_RESULTS_FILE = REPORTS_DIR / "model_results.csv"
+TRANSLATION_CACHE_FILE = DATA_DIR / "translation_cache.json"
 
 # --- DATASET COLUMNS ---
 # Standardize your dataset column names here
+CATEGORICAL_COLS = ['movement', 'status', 'class', 'subject_matter', 'court_department']
 COL_CASE_ID = 'lawsuit_id'
 COL_DATE = 'date'
 COL_ACTIVITY = 'movement'

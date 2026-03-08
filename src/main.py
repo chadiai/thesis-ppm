@@ -10,12 +10,6 @@ from modeling import prep, train
 def run_preprocessing():
     print("\n[1] Cleaning & Translation")
     p1_path = config.DATA_PROCESSED_DIR / config.TRANSLATED_FILENAME
-    if p1_path.exists():
-        df = pd.read_csv(p1_path)
-        for col in config.DATE_COLS:
-            if col in df.columns: df[col] = pd.to_datetime(df[col], errors='coerce')
-        return df
-
     df = loader.load_data()
     df = cleaner.clean_data(df)
     if hasattr(cleaner, 'remove_outliers'):

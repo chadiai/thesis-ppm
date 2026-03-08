@@ -1,7 +1,6 @@
 import pandas as pd
 from src import config
 
-
 def clean_data(df):
     """
     Generic data cleaning: Duplicates, Currency, Boolean, Dates, Artifacts.
@@ -49,26 +48,4 @@ def clean_data(df):
 
     return df
 
-
-def remove_outliers(df):
-    """
-    Removes extreme outliers (99th percentile) for duration and case length.
-    """
-    print("- Filtering Outliers (99th percentile)...")
-
-    grp = df.groupby(config.COL_CASE_ID)
-    case_stats = grp.agg(
-        duration=(config.COL_DATE, lambda x: (x.max() - x.min()).total_seconds()),
-        length=(config.COL_DATE, 'count')
-    )
-
-    thresh_dur = case_stats['duration'].quantile(0.99)
-    thresh_len = case_stats['length'].quantile(0.99)
-
-    valid_cases = case_stats[
-        (case_stats['duration'] <= thresh_dur) &
-        (case_stats['length'] <= thresh_len)
-        ].index
-
-    df_clean = df[df[config.COL_CASE_ID].isin(valid_cases)].copy()
-    return df_clean
+# Removed 'remove_outliers' to avoid data leakage (calculating global percentile)
