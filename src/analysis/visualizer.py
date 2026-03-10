@@ -104,7 +104,12 @@ def plot_feature_importance(model, X_test):
     feat_imp = pd.DataFrame({'feature': features, 'importance': importances})
     feat_imp = feat_imp.sort_values(by='importance', ascending=False).head(20)
 
-    plt.figure(figsize=(10, 8))
+    max_label_length = 40
+    feat_imp['feature'] = feat_imp['feature'].apply(
+        lambda x: (x[:max_label_length] + '...') if len(x) > max_label_length else x
+    )
+
+    plt.figure(figsize=(12, 8))
     sns.barplot(data=feat_imp, x='importance', y='feature', hue='feature', legend=False, palette='mako')
     plt.title('Top 20 Features Influencing Prediction (XAI)')
     plt.xlabel('Importance Score')
@@ -162,14 +167,23 @@ def plot_shap_summary(model, X_test):
         X_model_data = X_test.drop(columns=['predicted_remaining'], errors='ignore')
 
     # Subsample for speed to prevent memory/computation hangs
-    X_sample = X_model_data.sample(n=min(1000, len(X_model_data)), random_state=42)
+    X_sample = X_model_data.sample(n=min(1000, len(X_model_data)), random_state=42).copy()
+
+    # FIX: Truncate long feature names so they don't squeeze the plot
+    max_label_length = 40
+    truncated_columns = [
+        (col[:max_label_length] + '...') if len(col) > max_label_length else col
+        for col in X_sample.columns
+    ]
+    X_sample.columns = truncated_columns
 
     try:
         explainer = shap.Explainer(model)
         shap_values = explainer(X_sample)
 
-        plt.figure(figsize=(10, 8))
-        shap.summary_plot(shap_values, X_sample, show=False, max_display=15)
+        # Force a wider figure explicitly in SHAP
+        shap.summary_plot(shap_values, X_sample, show=False, max_display=15, plot_size=(12, 8))
+
         plt.title('SHAP Summary: Feature Impact on Duration')
         _save_plot("shap_summary.png")
     except Exception as e:
