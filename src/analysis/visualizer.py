@@ -193,17 +193,17 @@ def plot_shap_summary(model, X_test):
 def plot_error_by_prefix_length(X_test, y_test):
     _setup_style()
     print("- Plotting Error by Prefix Length...")
-    if 'predicted_remaining' not in X_test.columns or 'prefix_length' not in X_test.columns: return
+    if 'predicted_remaining' not in X_test.columns or 'prefix_length_raw' not in X_test.columns: return
 
     df_eval = X_test.copy()
     df_eval['actual'] = y_test
     df_eval['error'] = abs(df_eval['predicted_remaining'] - df_eval['actual'])
 
     # Smart truncation: Ignore the top 5% longest prefix lengths where error spikes due to lack of sample cases
-    max_len = int(df_eval['prefix_length'].quantile(0.95))
-    df_plot = df_eval[df_eval['prefix_length'] <= max_len]
+    max_len = int(df_eval['prefix_length_raw'].quantile(0.95))
+    df_plot = df_eval[df_eval['prefix_length_raw'] <= max_len]
 
-    mae_by_len = df_plot.groupby('prefix_length')['error'].mean()
+    mae_by_len = df_plot.groupby('prefix_length_raw')['error'].mean()
 
     plt.figure(figsize=(10, 6))
     sns.lineplot(x=mae_by_len.index, y=mae_by_len.values, marker='o', color='#c0392b', linewidth=2)

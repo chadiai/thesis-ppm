@@ -1,12 +1,11 @@
 import pandas as pd
-import numpy as np
 from src import config
 
 
 def add_temporal_features(df):
     """
     Adds time-based features: Weekday, Month, Elapsed Time.
-    Calculates the target variable: remaining_time_days.
+    Calculates the target variable: remaining_time_days (ONLY FOR CLOSED CASES).
     """
     df = df.copy()
     print("  - Adding Temporal Features...")
@@ -22,17 +21,24 @@ def add_temporal_features(df):
     df['Month'] = df[config.COL_DATE].dt.month
 
     # 2. Duration features
-    # Calculate start date for every case
     df['case_start'] = df.groupby(config.COL_CASE_ID)[config.COL_DATE].transform('min')
-
-    # Elapsed: How long has the case been running so far?
     df['elapsed_time_days'] = (df[config.COL_DATE] - df['case_start']).dt.total_seconds().div(86400)
-
-    # Time since last event: Gap between steps
     df['time_since_last_event'] = df.groupby(config.COL_CASE_ID)[config.COL_DATE].diff().dt.total_seconds().div(
         86400).fillna(0)
 
+    print("  - IMPORTANT: Filtering for officially closed cases ('Extinct' or 'Canceled')...")
+
+    # Search for the translations 'Extinct' or 'Canceled' in the status column
+    closed_mask = df[config.COL_STATUS].astype(str).str.contains('Extinct|Canceled', na=False, regex=True)
+    closed_case_ids = df[closed_mask][config.COL_CASE_ID].unique()
+
+    # Filter the dataframe to keep ONLY events belonging to closed cases
+    df = df[df[config.COL_CASE_ID].isin(closed_case_ids)].copy()
+
+    print(f"  - Kept {len(closed_case_ids)} closed cases for training.")
+
     # 3. Target Variable: Remaining Time
+    # Now it is safe to use 'max' because we know the last event is truly the closure of the case
     df['case_end'] = df.groupby(config.COL_CASE_ID)[config.COL_DATE].transform('max')
     df['remaining_time_days'] = (df['case_end'] - df[config.COL_DATE]).dt.total_seconds().div(86400)
 

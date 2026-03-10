@@ -48,6 +48,7 @@ def run_pipeline():
     df = run_preprocessing()
     stats.print_stats(stats.get_process_stats(df))
     df_feat = run_feature_engineering(df)
+    stats.print_stats(stats.get_process_stats(df_feat))
     visualizer.run_eda_plots(df_feat)
     run_modeling(df_feat)
     print("\n=== COMPLETE ===")
