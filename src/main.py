@@ -8,7 +8,7 @@ from modeling import prep, train
 
 
 def run_preprocessing():
-    print("\n[1] Cleaning & Translation")
+    print("\n Cleaning & Translation")
     p1_path = config.DATA_PROCESSED_DIR / config.TRANSLATED_FILENAME
     df = loader.load_data()
     df = cleaner.clean_data(df)
@@ -21,7 +21,7 @@ def run_preprocessing():
 
 
 def run_feature_engineering(df_phase1):
-    print("\n[2] Feature Engineering")
+    print("\n Feature Engineering")
     p2_path = config.DATA_PROCESSED_DIR / config.FEATURED_FILENAME
     df_feat = transformers.add_temporal_features(df_phase1)
     df_feat = transformers.add_control_flow_features(df_feat)
@@ -33,20 +33,22 @@ def run_feature_engineering(df_phase1):
 
 
 def run_modeling(df_feat):
-    print("\n[4] Predictive Modeling")
+    print("\n Predictive Modeling")
     data_dict = prep.split_and_prepare_data(df_feat)
     results_df, best_model, X_test, y_test = train.run_experiment(data_dict)
     print(results_df)
     config.REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     results_df.to_csv(config.MODEL_RESULTS_FILE, index=False)
     if best_model and X_test is not None:
-        visualizer.plot_error_by_prefix_length(X_test, y_test)
+        visualizer.run_model_plots(best_model, X_test, y_test)
 
 
 def run_pipeline():
     print("=== PIPELINE START ===")
     df = run_preprocessing()
+    stats.print_stats(stats.get_process_stats(df))
     df_feat = run_feature_engineering(df)
+    visualizer.run_eda_plots(df_feat)
     run_modeling(df_feat)
     print("\n=== COMPLETE ===")
 
