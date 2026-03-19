@@ -1,0 +1,1 @@
+lawsuit_id,date,movement,order,status,area,subject_matter,control,digital,class,distribution_date,court_department,claim_amount,judge,movement_cluster,judge_workload,workload_by_subject,Weekday,Month,case_start,elapsed_time_days,time_since_last_event,case_end,remaining_time_days,Last_event_ID,Second_last_event_ID,prefix_length,judge_changed

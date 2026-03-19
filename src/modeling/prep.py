@@ -32,7 +32,7 @@ def split_and_prepare_data(df):
     # 2. Define Feature Columns
     num_cols = [c for c in df.columns if c.startswith('Count_') or c in [
         'elapsed_time_days', 'time_since_last_event', 'prefix_length',
-        'judge_changed', 'judge_workload', 'claim_amount'
+        'judge_changed', 'judge_workload', 'workload_by_subject', 'claim_amount'
     ]]
 
     safe_case_attributes = [c for c in config.CASE_ATTRIBUTES if c != 'claim_amount' and c in df.columns]

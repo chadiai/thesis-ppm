@@ -40,3 +40,12 @@ CASE_ATTRIBUTES = [
     'claim_amount',
     'digital'
 ]
+
+ACTIVITY_CLUSTERS = {
+    "Initial Filings": ["Digitized Initial Petition", "Initial Petition received", "Distributed", "Joined Contestation", "Amendment to the Initial"],
+    "Decisions & Judgments": ["Decision", "Action judged", "Action dismissed", "Sentence", "Judgment", "Default sentence"],
+    "Hearings": ["Hearing", "Conciliation", "Instruction and Judgment"],
+    "Appeals": ["Appeal", "Interlocutory Appeal", "2nd Instance Decision"],
+    "Notices & Subpoenas": ["Notary Certificate", "Letter Issued", "Writ", "Subpoena", "AR Negative", "Negative AR", "AR Positive", "Positive AR"],
+    "Execution & Financial": ["Execution", "Bacen Jud", "Attachment", "Permit issued", "Deposit"]
+}

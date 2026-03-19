@@ -222,9 +222,36 @@ def run_eda_plots(df):
     plot_prefix_length_distribution(df)
     plot_remaining_time_by_prefix(df)
 
+def plot_error_by_workload_severity(X_test, y_test):
+    _setup_style()
+    print("- Plotting Error Segmented by Workload...")
+    if 'predicted_remaining' not in X_test.columns or 'judge_workload' not in X_test.columns: return
+
+    df_eval = X_test.copy()
+    df_eval['actual'] = y_test
+    df_eval['error'] = abs(df_eval['predicted_remaining'] - df_eval['actual'])
+
+    # Segment cases into High vs Low Workload at the time of prediction
+    median_workload = df_eval['judge_workload'].median()
+    df_eval['Workload Segment'] = df_eval['judge_workload'].apply(
+        lambda x: 'High Workload' if x >= median_workload else 'Low Workload'
+    )
+
+    max_len = int(df_eval['prefix_length_raw'].quantile(0.95))
+    df_plot = df_eval[df_eval['prefix_length_raw'] <= max_len]
+
+    mae_segmented = df_plot.groupby(['prefix_length_raw', 'Workload Segment'])['error'].mean().reset_index()
+
+    plt.figure(figsize=(10, 6))
+    sns.lineplot(data=mae_segmented, x='prefix_length_raw', y='error', hue='Workload Segment', linewidth=2)
+    plt.title('Model Error (MAE) by Case Progress & Judge Workload')
+    plt.xlabel('Event Number (Prefix Length)')
+    plt.ylabel('Mean Absolute Error (Days)')
+    plt.grid(True, linestyle='--')
+    _save_plot("error_by_workload_segment.png")
 
 def run_model_plots(model, X_test, y_test):
     print("\n[Generating Model Evaluation Visualizations]")
     plot_feature_importance(model, X_test)
-    plot_shap_summary(model, X_test)
+    #plot_shap_summary(model, X_test)
     plot_error_by_prefix_length(X_test, y_test)

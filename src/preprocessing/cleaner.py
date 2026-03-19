@@ -48,4 +48,40 @@ def clean_data(df):
 
     return df
 
-# Removed 'remove_outliers' to avoid data leakage (calculating global percentile)
+def cluster_activities_hybrid(df, top_n=20):
+    """
+    Hybrid approach: Keeps the exact labels for the top N most frequent activities,
+    and clusters the remaining "long tail" of activities into broader phases.
+    """
+    print(f"- Applying Hybrid Activity Clustering (Keeping top {top_n} exact)...")
+    df = df.copy()
+
+    # 1. Find the top N most frequent activities across the dataset
+    top_activities = df[config.COL_ACTIVITY].value_counts().nlargest(top_n).index.tolist()
+
+    def assign_cluster(movement_str):
+        if not isinstance(movement_str, str):
+            return "Administrative/Other"
+
+        # Rule A: If it's a top, high-frequency activity, KEEP its exact name
+        if movement_str in top_activities:
+            return movement_str
+
+        # Rule B: If it's a rare activity, cluster it using our dictionary
+        for cluster, keywords in config.ACTIVITY_CLUSTERS.items():
+            if any(kw.lower() in movement_str.lower() for kw in keywords):
+                return cluster
+
+        # Rule C: Fallback for unmapped rare activities
+        return "Administrative/Other"
+
+    # Apply the mapping
+    df['movement_cluster'] = df[config.COL_ACTIVITY].apply(assign_cluster)
+
+    # Overwrite the original movement column so models use the hybrid labels
+    df[config.COL_ACTIVITY] = df['movement_cluster']
+
+    num_unique = df['movement_cluster'].nunique()
+    print(f"  - Reduced activities to {num_unique} unique labels ({top_n} exact + {num_unique - top_n} clusters).")
+
+    return df

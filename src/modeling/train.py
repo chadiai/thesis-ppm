@@ -56,7 +56,7 @@ def run_experiment(data_dict):
     f_state = ['Last_event_ID_te']
     f_last_two = ['Last_event_ID_te', 'Second_last_event_ID_te']
 
-    # 4. Temporal (FIXED)
+    # 4. Temporal
     # Added prefix_length to give context to elapsed_time
     # Uses Month_te and Weekday_te (Target Encoded) instead of raw
     f_temporal = ['elapsed_time_days', 'time_since_last_event', 'prefix_length', 'Month_te', 'Weekday_te']
@@ -68,16 +68,15 @@ def run_experiment(data_dict):
     def get_cols(col_list):
         return [c for c in col_list if c in train_df.columns]
 
-    # --- 8 Scenarios ---
     scenarios = {
-        "1. Case Attributes (Baseline)": get_cols(f_attrs),
-        "2. Control Flow: Events (Freq + State)": get_cols(f_attrs + f_counts + f_state),
-        "3. Control Flow: Frequency Only": get_cols(f_attrs + f_counts),
-        "4. Control Flow: Last Two": get_cols(f_attrs + f_last_two),
-        "5. Full Control Flow": get_cols(f_attrs + f_counts + f_last_two),
-        "6. Temporal Features": get_cols(f_attrs + f_temporal),
-        "7. Workload Features": get_cols(f_attrs + f_workload),
-        "8. All Features": all_cols
+        "Case Attributes (Baseline)": get_cols(f_attrs),
+        "Control Flow: Events (Freq + State)": get_cols(f_attrs + f_counts + f_state),
+        "Control Flow: Frequency Only": get_cols(f_attrs + f_counts),
+        "Control Flow: Last Two": get_cols(f_attrs + f_last_two),
+        "Full Control Flow": get_cols(f_attrs + f_counts + f_last_two),
+        "Temporal Features": get_cols(f_attrs + f_temporal),
+        "Workload Features": get_cols(f_attrs + f_workload),
+        "All Features": all_cols
     }
 
     results = []
@@ -104,7 +103,6 @@ def run_experiment(data_dict):
 
             # Evaluate
             mae = mean_absolute_error(y_test, y_pred)
-            rmse = root_mean_squared_error(y_test, y_pred)
 
             print(f"  {scenario_name:40s} | MAE: {mae:.2f} days")
 
@@ -112,7 +110,6 @@ def run_experiment(data_dict):
                 "Model": model_name.upper(),
                 "Scenario": scenario_name,
                 "MAE": mae,
-                "RMSE": rmse,
                 "Num_Features": len(features)
             })
 
