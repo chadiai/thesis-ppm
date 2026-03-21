@@ -338,5 +338,5 @@ def plot_thesis_final_showdown():
 def run_model_plots(model, X_test, y_test):
     print("\n[Generating Model Evaluation Visualizations]")
     plot_feature_importance(model, X_test)
-    #plot_shap_summary(model, X_test)
+    plot_shap_summary(model, X_test)
     plot_error_by_prefix_length(X_test, y_test)
