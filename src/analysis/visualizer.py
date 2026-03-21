@@ -4,19 +4,16 @@ import seaborn as sns
 import shap
 from src import config
 
-
 def _save_plot(filename):
     plt.tight_layout()
     plt.savefig(config.FIGURES_DIR / filename, bbox_inches='tight')
     plt.close()
     print(f"\tSaved: {config.FIGURES_DIR / filename}")
 
-
 def _setup_style():
     sns.set_theme(style="whitegrid", context="paper", font_scale=1.2)
     if not config.FIGURES_DIR.exists():
         config.FIGURES_DIR.mkdir(parents=True, exist_ok=True)
-
 
 def plot_duration_distribution(df):
     _setup_style()
@@ -32,7 +29,6 @@ def plot_duration_distribution(df):
     plt.xlabel('Days')
     plt.ylabel('Number of Cases')
     _save_plot("duration_distribution.png")
-
 
 def plot_workload_vs_duration(df):
     _setup_style()
@@ -63,7 +59,6 @@ def plot_workload_vs_duration(df):
     plt.ylabel('Case Duration (Days)')
     _save_plot("workload_vs_duration.png")
 
-
 def plot_cases_per_judge(df):
     _setup_style()
     print("- Plotting Judge Caseload...")
@@ -77,7 +72,6 @@ def plot_cases_per_judge(df):
     plt.xlabel('Unique Lawsuits')
     plt.ylabel('Judge Identifier')
     _save_plot("cases_per_judge.png")
-
 
 def plot_feature_importance(model, X_test):
     _setup_style()
@@ -116,7 +110,6 @@ def plot_feature_importance(model, X_test):
     plt.ylabel('Feature')
     _save_plot("feature_importance.png")
 
-
 def plot_prefix_length_distribution(df):
     _setup_style()
     print("- Plotting Prefix Length Distribution...")
@@ -153,7 +146,6 @@ def plot_remaining_time_by_prefix(df):
     plt.ylabel('Avg. Remaining Time (Days)')
     plt.grid(True, linestyle='--', linewidth=0.5)
     _save_plot("remaining_time_by_prefix.png")
-
 
 def plot_shap_summary(model, X_test):
     _setup_style()
@@ -213,7 +205,6 @@ def plot_error_by_prefix_length(X_test, y_test):
     plt.grid(True, linestyle='--')
     _save_plot("error_by_prefix.png")
 
-
 def run_eda_plots(df):
     print("\n[Generating EDA Visualizations]")
     plot_duration_distribution(df)
@@ -249,7 +240,6 @@ def plot_error_by_workload_severity(X_test, y_test):
     plt.ylabel('Mean Absolute Error (Days)')
     plt.grid(True, linestyle='--')
     _save_plot("error_by_workload_segment.png")
-
 
 def plot_thesis_feature_progression():
     _setup_style()
