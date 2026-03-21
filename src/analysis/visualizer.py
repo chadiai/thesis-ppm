@@ -169,7 +169,7 @@ def plot_shap_summary(model, X_test):
     # Subsample for speed to prevent memory/computation hangs
     X_sample = X_model_data.sample(n=min(1000, len(X_model_data)), random_state=42).copy()
 
-    # FIX: Truncate long feature names so they don't squeeze the plot
+    # Truncate long feature names so they don't squeeze the plot
     max_label_length = 40
     truncated_columns = [
         (col[:max_label_length] + '...') if len(col) > max_label_length else col
@@ -249,6 +249,101 @@ def plot_error_by_workload_severity(X_test, y_test):
     plt.ylabel('Mean Absolute Error (Days)')
     plt.grid(True, linestyle='--')
     _save_plot("error_by_workload_segment.png")
+
+
+def plot_thesis_feature_progression():
+    _setup_style()
+    print("- Plotting Feature Progression (RF vs LSTM)...")
+
+    # Load the results CSV that was just generated
+    if not config.MODEL_RESULTS_FILE.exists():
+        print(f"\t[!] Cannot find {config.MODEL_RESULTS_FILE}. Run modeling first.")
+        return
+
+    df = pd.read_csv(config.MODEL_RESULTS_FILE)
+
+    # Filter for only RF and LSTM models
+    df_plot = df[df['Model'].isin(['RF', 'LSTM'])].copy()
+
+    # Map RF's "Full Control Flow" to "Control Flow (Sequence)" so the bars group together properly
+    df_plot['Scenario'] = df_plot['Scenario'].replace({"Full Control Flow": "Control Flow (Sequence)"})
+
+    # Define the 5 main scenarios to compare in the desired order
+    target_scenarios = [
+        "Case Attributes (Baseline)",
+        "Temporal Features",
+        "Workload Features",
+        "All Features",
+        "Control Flow (Sequence)"
+    ]
+
+    # Filter out the extra RF ablation scenarios (like 'Control Flow: Last Two')
+    df_plot = df_plot[df_plot['Scenario'].isin(target_scenarios)]
+
+    plt.figure(figsize=(12, 6))
+    ax = sns.barplot(
+        data=df_plot,
+        x="Scenario",
+        y="MAE",
+        hue="Model",
+        order=target_scenarios,
+        palette="muted"
+    )
+
+    plt.title('Error Progression by Feature Scenario (RF vs LSTM)', fontweight='bold', pad=15)
+    plt.xlabel('Feature Set', labelpad=10)
+    plt.ylabel('Mean Absolute Error (Days)', labelpad=10)
+    plt.xticks(rotation=25, ha='right')
+    plt.legend(title='Architecture', loc='upper right')
+
+    _save_plot("thesis_feature_progression.png")
+
+def plot_thesis_final_showdown():
+    _setup_style()
+    print("- Plotting Final Model Showdown...")
+
+    if not config.MODEL_RESULTS_FILE.exists():
+        print(f"\t[!] Cannot find {config.MODEL_RESULTS_FILE}. Run modeling first.")
+        return
+
+    df = pd.read_csv(config.MODEL_RESULTS_FILE)
+
+    # Filter for the "All Features" scenario
+    df_plot = df[df['Scenario'] == 'All Features'].copy()
+
+    # Ensure we only plot RF, XGB, and LSTM
+    df_plot = df_plot[df_plot['Model'].isin(['RF', 'XGB', 'LSTM'])]
+
+    # Enforce plotting order
+    df_plot['Model'] = pd.Categorical(df_plot['Model'], categories=['RF', 'XGB', 'LSTM'], ordered=True)
+    df_plot = df_plot.sort_values('Model')
+
+    plt.figure(figsize=(10, 6))
+    ax = sns.barplot(
+        data=df_plot,
+        x="Model",
+        y="MAE",
+        hue="Model",
+        palette="viridis",
+        legend=False
+    )
+
+    plt.title('Final Model Comparison: All Features Scenario', fontweight='bold', pad=15)
+    plt.xlabel('Model Architecture', labelpad=10)
+    plt.ylabel('Mean Absolute Error (Days)', labelpad=10)
+
+    # Add exact value labels on top of the bars
+    for p in ax.patches:
+        height = p.get_height()
+        if pd.notnull(height) and height > 0:
+            ax.annotate(f'{height:.1f}',
+                        (p.get_x() + p.get_width() / 2., height),
+                        ha='center', va='bottom',
+                        xytext=(0, 3),
+                        textcoords='offset points',
+                        fontweight='bold')
+
+    _save_plot("thesis_final_showdown.png")
 
 def run_model_plots(model, X_test, y_test):
     print("\n[Generating Model Evaluation Visualizations]")

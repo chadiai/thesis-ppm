@@ -42,7 +42,7 @@ def add_inter_case_features(df):
     timeline['workload_by_subject'] = timeline.groupby([config.COL_RESOURCE, 'subject_matter'])['change'].cumsum()
 
     # 4. Merge back to main dataframe safely
-    # FIX: Explicitly sort after dropping duplicates to satisfy merge_asof constraints
+    # Explicitly sort after dropping duplicates to satisfy merge_asof constraints
     global_timeline = timeline[[config.COL_DATE, config.COL_RESOURCE, 'judge_workload']].drop_duplicates(
         subset=[config.COL_DATE, config.COL_RESOURCE], keep='last'
     ).sort_values(config.COL_DATE)

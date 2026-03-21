@@ -120,6 +120,8 @@ def run_modeling(df_feat):
         visualizer.run_model_plots(best_model, X_test, y_test)
         visualizer.plot_error_by_workload_severity(X_test, y_test)
 
+    visualizer.plot_thesis_feature_progression()
+    visualizer.plot_thesis_final_showdown()
 
 def run_pipeline():
     print("=== PIPELINE START ===")
