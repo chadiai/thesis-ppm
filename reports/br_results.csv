@@ -1,0 +1,22 @@
+Model,Scenario,MAE,Num_Features
+RF,Case Attributes (Baseline),157.12673694587815,16
+RF,Control Flow: Events (Freq + State),222.30853915393766,38
+RF,Control Flow: Frequency Only,222.3085391539377,37
+RF,Control Flow: Last Two,150.12338209511498,18
+RF,Full Control Flow,222.28991832681785,39
+RF,Temporal Features,232.35311252473076,19
+RF,Workload Features,74.28508040146674,18
+RF,All Features,231.8466672248755,44
+XGB,Case Attributes (Baseline),152.50080990301115,16
+XGB,Control Flow: Events (Freq + State),158.6947040236999,38
+XGB,Control Flow: Frequency Only,158.6947040236999,37
+XGB,Control Flow: Last Two,149.93199502820167,18
+XGB,Full Control Flow,158.91885523929776,39
+XGB,Temporal Features,159.3913777431595,19
+XGB,Workload Features,72.76719363576898,18
+XGB,All Features,159.3913777431595,44
+LSTM,Case Attributes (Baseline),98.63069691880841,14
+LSTM,Control Flow (Sequence),112.08386527088201,15
+LSTM,Temporal Features,101.28815279096086,18
+LSTM,Workload Features,109.63000579548773,16
+LSTM,All Features,99.26859758323599,21

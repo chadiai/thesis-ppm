@@ -41,6 +41,10 @@ def add_inter_case_features(df):
     timeline['judge_workload'] = timeline.groupby(config.COL_RESOURCE)['change'].cumsum()
     timeline['workload_by_subject'] = timeline.groupby([config.COL_RESOURCE, 'subject_matter'])['change'].cumsum()
 
+    # Force workload to 0 for unassigned/unknown judges
+    timeline.loc[timeline[config.COL_RESOURCE] == 'Unknown', 'judge_workload'] = 0
+    timeline.loc[timeline[config.COL_RESOURCE] == 'Unknown', 'workload_by_subject'] = 0
+
     # 4. Merge back to main dataframe safely
     # Explicitly sort after dropping duplicates to satisfy merge_asof constraints
     global_timeline = timeline[[config.COL_DATE, config.COL_RESOURCE, 'judge_workload']].drop_duplicates(

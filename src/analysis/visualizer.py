@@ -5,10 +5,12 @@ import shap
 from src import config
 
 def _save_plot(filename):
+    target_dir = config.FIGURES_DIR / config.NAME
+    target_dir.mkdir(parents=True, exist_ok=True)
     plt.tight_layout()
-    plt.savefig(config.FIGURES_DIR / filename, bbox_inches='tight')
+    plt.savefig(target_dir / filename, bbox_inches='tight')
     plt.close()
-    print(f"\tSaved: {config.FIGURES_DIR / filename}")
+    print(f"\tSaved: {target_dir / filename}")
 
 def _setup_style():
     sns.set_theme(style="whitegrid", context="paper", font_scale=1.2)
@@ -177,6 +179,7 @@ def plot_shap_summary(model, X_test):
         shap.summary_plot(shap_values, X_sample, show=False, max_display=15, plot_size=(12, 8))
 
         plt.title('SHAP Summary: Feature Impact on Duration')
+        plt.tight_layout()
         _save_plot("shap_summary.png")
     except Exception as e:
         print(f"\t[!] SHAP failed: {e}")
@@ -203,7 +206,7 @@ def plot_error_by_prefix_length(X_test, y_test):
     plt.xlabel('Event Number (Prefix Length)')
     plt.ylabel('Mean Absolute Error (Days)')
     plt.grid(True, linestyle='--')
-    _save_plot("error_by_prefix.png")
+    _save_plot("error_by_prefix_length.png")
 
 def run_eda_plots(df):
     print("\n[Generating EDA Visualizations]")
@@ -239,7 +242,8 @@ def plot_error_by_workload_severity(X_test, y_test):
     plt.xlabel('Event Number (Prefix Length)')
     plt.ylabel('Mean Absolute Error (Days)')
     plt.grid(True, linestyle='--')
-    _save_plot("error_by_workload_segment.png")
+    _save_plot("error_by_workload_severity.png")
+
 
 def plot_thesis_feature_progression():
     _setup_style()
@@ -285,55 +289,82 @@ def plot_thesis_feature_progression():
     plt.ylabel('Mean Absolute Error (Days)', labelpad=10)
     plt.xticks(rotation=25, ha='right')
     plt.legend(title='Architecture', loc='upper right')
-
     _save_plot("thesis_feature_progression.png")
 
-def plot_thesis_final_showdown():
-    _setup_style()
-    print("- Plotting Final Model Showdown...")
 
-    if not config.MODEL_RESULTS_FILE.exists():
-        print(f"\t[!] Cannot find {config.MODEL_RESULTS_FILE}. Run modeling first.")
+def plot_thesis_final_showdown(df_results):
+    """
+    Plots the absolute best performing scenario for each model type (RF, XGB, LSTM)
+    and labels the bar with the specific feature set that achieved it.
+    """
+    _setup_style()
+    print("- Plotting Final Model Showdown (Best Configuration per Model)...")
+
+    if df_results is None or df_results.empty:
+        print("  - No results to plot.")
         return
 
-    df = pd.read_csv(config.MODEL_RESULTS_FILE)
+    # 1. Find the index of the lowest MAE for each Model type
+    best_idx = df_results.groupby('Model')['MAE'].idxmin()
+    best_df = df_results.loc[best_idx].copy()
 
-    # Filter for the "All Features" scenario
-    df_plot = df[df['Scenario'] == 'All Features'].copy()
-
-    # Ensure we only plot RF, XGB, and LSTM
-    df_plot = df_plot[df_plot['Model'].isin(['RF', 'XGB', 'LSTM'])]
-
-    # Enforce plotting order
-    df_plot['Model'] = pd.Categorical(df_plot['Model'], categories=['RF', 'XGB', 'LSTM'], ordered=True)
-    df_plot = df_plot.sort_values('Model')
+    # Sort them descending so the lowest error (best model) is on the right
+    best_df = best_df.sort_values(by='MAE', ascending=False).reset_index(drop=True)
 
     plt.figure(figsize=(10, 6))
-    ax = sns.barplot(
-        data=df_plot,
-        x="Model",
-        y="MAE",
-        hue="Model",
-        palette="viridis",
-        legend=False
-    )
 
-    plt.title('Final Model Comparison: All Features Scenario', fontweight='bold', pad=15)
-    plt.xlabel('Model Architecture', labelpad=10)
-    plt.ylabel('Mean Absolute Error (Days)', labelpad=10)
+    # 2. Define colors for each specific model
+    color_map = {'RF': '#95a5a6', 'XGB': '#3498db', 'LSTM': '#e74c3c'}
+    bar_colors = [color_map.get(str(m).upper(), '#bdc3c7') for m in best_df['Model']]
 
-    # Add exact value labels on top of the bars
-    for p in ax.patches:
-        height = p.get_height()
-        if pd.notnull(height) and height > 0:
-            ax.annotate(f'{height:.1f}',
-                        (p.get_x() + p.get_width() / 2., height),
-                        ha='center', va='bottom',
-                        xytext=(0, 3),
-                        textcoords='offset points',
-                        fontweight='bold')
+    # 3. Create the Bar Chart
+    bars = plt.bar(best_df['Model'], best_df['MAE'], color=bar_colors, width=0.5)
 
-    _save_plot("thesis_final_showdown.png")
+    # 4. Add the Labels (MAE and Scenario Name) directly above the bars
+    for bar, mae, scenario in zip(bars, best_df['MAE'], best_df['Scenario']):
+        yval = bar.get_height()
+
+        # Format the text to show the score, then the winning feature set in brackets below it
+        label_text = f"{mae:.2f} days\n[{scenario}]"
+
+        plt.text(bar.get_x() + bar.get_width() / 2, yval + (best_df['MAE'].max() * 0.02),
+                 label_text, ha='center', va='bottom', fontsize=10, fontweight='bold',
+                 bbox=dict(facecolor='white', alpha=0.8, edgecolor='none', pad=1))
+
+    plt.title(f'Final Showdown: Best Configuration per Algorithm ({config.NAME})', fontsize=14, pad=20)
+    plt.ylabel('Mean Absolute Error (Days)', fontsize=12)
+    plt.xlabel('Algorithm', fontsize=12)
+
+    # Extend the y-axis slightly so the text boxes don't get cut off at the top
+    plt.ylim(0, best_df['MAE'].max() * 1.25)
+
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+
+    _save_plot("_thesis_final_showdown.png")
+
+def plot_learning_curve(history, model_name, scenario_name):
+    """
+    Plots the Training vs Validation Loss over epochs/boosting rounds.
+    """
+    _setup_style()
+    print(f"- Plotting Learning Curve for {model_name}...")
+
+    plt.figure(figsize=(10, 6))
+    epochs = range(1, len(history['train']) + 1)
+
+    sns.lineplot(x=epochs, y=history['train'], label='Train Loss (MAE)', color='#3498db', linewidth=2)
+    if 'val' in history and history['val']:
+        sns.lineplot(x=epochs, y=history['val'], label='Validation Loss (MAE)', color='#e74c3c', linewidth=2)
+
+    plt.title(f'Learning Curve: {model_name} ({scenario_name})')
+    plt.xlabel('Epochs / Boosting Rounds')
+    plt.ylabel('Mean Absolute Error (Days)')
+    plt.legend()
+    plt.grid(True, linestyle='--', linewidth=0.5)
+
+    # Sanitize scenario name for the file path
+    safe_scenario = scenario_name.replace(" ", "_").replace(":", "").replace("(", "").replace(")", "").lower()
+    _save_plot(f"learning_curve_{model_name.lower()}_{safe_scenario}.png")
 
 def run_model_plots(model, X_test, y_test):
     print("\n[Generating Model Evaluation Visualizations]")

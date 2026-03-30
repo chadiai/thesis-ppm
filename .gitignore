@@ -7,6 +7,5 @@ src/preprocessing/__pycache__/
 .idea/
 .venv/
 
-data/processed/tjsp_features.csv
-data/processed/tjsp_translated.csv
-data/TJSP-BL-event-log.csv
+data/br.csv
+data/en.csv

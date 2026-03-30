@@ -29,14 +29,14 @@ def split_and_prepare_data(df):
     # 1. Clean Target
     df = df.dropna(subset=[target]).copy()
 
-    # 2. Define Feature Columns
-    num_cols = [c for c in df.columns if c.startswith('Count_') or c in [
-        'elapsed_time_days', 'time_since_last_event', 'prefix_length',
-        'judge_changed', 'judge_workload', 'workload_by_subject', 'claim_amount'
-    ]]
+    # 2. Dynamically Define Feature Columns
+    # Exclude IDs, target, and raw date columns from the feature space
+    exclude_cols = [config.COL_CASE_ID, config.COL_DATE, 'case_start', 'case_end', target, 'prefix_length_raw']
+    feature_cols = [c for c in df.columns if c not in exclude_cols]
 
-    safe_case_attributes = [c for c in config.CASE_ATTRIBUTES if c != 'claim_amount' and c in df.columns]
-    cat_cols = ['Last_event_ID', 'Second_last_event_ID', 'Month', 'Weekday'] + safe_case_attributes
+    # Auto-detect column types
+    num_cols = df[feature_cols].select_dtypes(include=['number']).columns.tolist()
+    cat_cols = df[feature_cols].select_dtypes(exclude=['number']).columns.tolist()
 
     # 3. Temporal Split
     cases = df.groupby(config.COL_CASE_ID)['case_start'].min().sort_values().index.tolist()
@@ -54,12 +54,13 @@ def split_and_prepare_data(df):
     # 4. Encoders (Target Encode Cats + Scale Numerics)
     train_df, test_df = target_encode(train_df, test_df, cat_cols, target)
 
-    test_df['prefix_length_raw'] = test_df['prefix_length'] # prefix length for visualization
-    scaler = StandardScaler()
-    train_df[num_cols] = scaler.fit_transform(train_df[num_cols].fillna(0))
-    test_df[num_cols] = scaler.transform(test_df[num_cols].fillna(0))
+    test_df['prefix_length_raw'] = test_df['prefix_length']
 
-    # Return full dataframes
+    if num_cols:  # Only scale if there are numeric columns
+        scaler = StandardScaler()
+        train_df[num_cols] = scaler.fit_transform(train_df[num_cols].fillna(0))
+        test_df[num_cols] = scaler.transform(test_df[num_cols].fillna(0))
+
     return {
         "train_df": train_df,
         "test_df": test_df,

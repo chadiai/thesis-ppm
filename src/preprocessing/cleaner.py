@@ -1,87 +1,78 @@
 import pandas as pd
 from src import config
+import ast
+
 
 def clean_data(df):
-    """
-    Generic data cleaning: Duplicates, Currency, Boolean, Dates, Artifacts.
-    """
     df = df.copy()
-    initial_rows = len(df)
-    print("- Cleaning data...")
 
-    # 1. Remove exact duplicates
-    df = df.drop_duplicates()
-    if len(df) < initial_rows:
-        print(f"  - Dropped {initial_rows - len(df)} duplicate rows.")
+    # 1. Clean Currency dynamically (Any column with 'amount' or 'value' in the name)
+    for col in df.columns:
+        if 'amount' in col.lower() or 'value' in col.lower():
+            df[col] = df[col].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
+            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
-    # 2. Clean Currency (Generic)
-    if 'claim_amount' in df.columns:
-        df['claim_amount'] = (
-            df['claim_amount']
-            .astype(str)
-            .str.replace('.', '', regex=False)
-            .str.replace(',', '.', regex=False)
-        )
-        df['claim_amount'] = pd.to_numeric(df['claim_amount'], errors='coerce').fillna(0)
+    # 2. Clean Boolean dynamically (Map 'VERDADEIRO' to 1, rest to 0)
+    for col in df.select_dtypes(include=['object']):
+        if df[col].astype(str).str.strip().str.upper().isin(['VERDADEIRO', 'FALSO']).any():
+            df[col] = (df[col].astype(str).str.upper().str.strip() == 'VERDADEIRO').astype(int)
 
-    # 3. Clean Boolean (Generic)
-    if 'digital' in df.columns:
-        df['digital'] = (df['digital'].astype(str).str.upper().str.strip() == 'VERDADEIRO').astype(int)
-
-    # 4. Clean Dates
-    for col in config.DATE_COLS:
-        if col in df.columns:
+    # 3. Auto-detect and parse dates (Columns containing 'date' or 'time')
+    for col in df.columns:
+        if 'date' in col.lower() or 'time' in col.lower():
             df[col] = pd.to_datetime(df[col], dayfirst=True, errors='coerce')
 
-    # 5. Filter Date Artifacts (Generic Year Range 1990-2030)
-    if config.COL_DATE in df.columns:
-        mask_valid = (df[config.COL_DATE].dt.year >= 1990) & (df[config.COL_DATE].dt.year <= 2030)
-        invalid_count = (~mask_valid).sum()
-        if invalid_count > 0:
-            print(f"  - Dropped {invalid_count} events with invalid dates.")
-            df = df[mask_valid]
+    # 4. Parse Judge Tuples AND Extract Judge Type
+    if config.COL_RESOURCE in df.columns:
+        def parse_judge_info(val):
+            judge_ids = 'Unknown'
+            judge_types = 'Unknown'
 
-    # 6. Sorting
-    sort_cols = [c for c in [config.COL_CASE_ID, config.COL_DATE, 'order'] if c in df.columns]
-    if len(sort_cols) >= 2:
-        df = df.sort_values(by=sort_cols)
+            if pd.isna(val) or str(val).strip() == '()':
+                return judge_ids, judge_types
+
+            val_str = str(val).strip()
+            # If it's the English dataset format: "(('SJ000210', 'District Judge'), ...)"
+            if val_str.startswith('(('):
+                try:
+                    parsed = ast.literal_eval(val_str)
+
+                    # Extract IDs (Index 0 of inner tuple)
+                    ids = [item[0] for item in parsed if isinstance(item, tuple) and len(item) > 0]
+                    # Extract Types (Index 1 of inner tuple)
+                    types = [item[1] for item in parsed if isinstance(item, tuple) and len(item) > 1]
+
+                    if ids:
+                        judge_ids = "_".join(ids)
+                    if types:
+                        # Use sorted/set to avoid "District Judge_District Judge", just keep "District Judge"
+                        # Or if mixed: "District Judge_Magistrate Judge"
+                        unique_types = sorted(list(set(types)))
+                        judge_types = "_".join(unique_types)
+
+                    return judge_ids, judge_types
+                except Exception:
+                    pass
+
+            # Fallback for the original Brazilian dataset
+            return val_str, 'Unknown'
+
+        # Apply parsing and split the results into two columns
+        parsed_info = df[config.COL_RESOURCE].apply(parse_judge_info)
+        df[config.COL_RESOURCE] = parsed_info.apply(lambda x: x[0])
+        df['judge_type'] = parsed_info.apply(lambda x: x[1])
 
     return df
 
+
 def cluster_activities_hybrid(df, top_n=20):
-    """
-    Hybrid approach: Keeps the exact labels for the top N most frequent activities,
-    and clusters the remaining "long tail" of activities into broader phases.
-    """
-    print(f"- Applying Hybrid Activity Clustering (Keeping top {top_n} exact)...")
+    """Dynamically keeps the top N activities, bundles the rest into 'Other'"""
+    print(f"- Applying Dynamic Activity Clustering (Keeping top {top_n} exact)...")
     df = df.copy()
 
-    # 1. Find the top N most frequent activities across the dataset
     top_activities = df[config.COL_ACTIVITY].value_counts().nlargest(top_n).index.tolist()
 
-    def assign_cluster(movement_str):
-        if not isinstance(movement_str, str):
-            return "Administrative/Other"
-
-        # Rule A: If it's a top, high-frequency activity, KEEP its exact name
-        if movement_str in top_activities:
-            return movement_str
-
-        # Rule B: If it's a rare activity, cluster it using our dictionary
-        for cluster, keywords in config.ACTIVITY_CLUSTERS.items():
-            if any(kw.lower() in movement_str.lower() for kw in keywords):
-                return cluster
-
-        # Rule C: Fallback for unmapped rare activities
-        return "Administrative/Other"
-
-    # Apply the mapping
-    df['movement_cluster'] = df[config.COL_ACTIVITY].apply(assign_cluster)
-
-    # Overwrite the original movement column so models use the hybrid labels
-    df[config.COL_ACTIVITY] = df['movement_cluster']
-
-    num_unique = df['movement_cluster'].nunique()
-    print(f"  - Reduced activities to {num_unique} unique labels ({top_n} exact + {num_unique - top_n} clusters).")
-
+    df[config.COL_ACTIVITY] = df[config.COL_ACTIVITY].apply(
+        lambda x: x if x in top_activities else "Other/Rare Activity"
+    )
     return df

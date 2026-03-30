@@ -29,7 +29,7 @@ def add_temporal_features(df):
     print("  - IMPORTANT: Filtering for officially closed cases ('Extinct' or 'Canceled')...")
 
     # Search for the translations 'Extinct' or 'Canceled' in the status column
-    closed_mask = df[config.COL_STATUS].astype(str).str.contains('Extinct|Canceled', na=False, regex=True)
+    closed_mask = df[config.COL_STATUS].astype(str).str.contains('Extinct|Canceled|closed', case=False, na=False,regex=True)
     closed_case_ids = df[closed_mask][config.COL_CASE_ID].unique()
 
     # Filter the dataframe to keep ONLY events belonging to closed cases
@@ -82,18 +82,28 @@ def add_control_flow_features(df, top_n_events=20):
 
 def add_judge_change_feature(df):
     """
-    Simple check: Did the judge change compared to the previous row?
+    Detects true judge handovers by ignoring 'Unknown' gaps and calculates
+    the cumulative number of handovers for the case.
     """
     if config.COL_RESOURCE not in df.columns:
         return df
 
-    print("  - Adding Judge Change Detection...")
+    print("  - Adding Judge Change (Handover) Detection...")
     df = df.sort_values([config.COL_CASE_ID, config.COL_DATE])
 
-    # Shift judge column by 1 within the group
-    prev_judge = df.groupby(config.COL_CASE_ID)[config.COL_RESOURCE].shift(1)
+    # 1. To avoid 'Unknown' triggering false handovers (e.g., A -> Unknown -> A),
+    # we temporarily replace 'Unknown' with NaN and forward-fill within each case.
+    # This tracks the true "active" judge over time.
+    active_judge = df[config.COL_RESOURCE].replace('Unknown', pd.NA)
+    active_judge = active_judge.groupby(df[config.COL_CASE_ID]).ffill()
 
-    # Compare current judge to previous
-    df['judge_changed'] = ((df[config.COL_RESOURCE] != prev_judge) & prev_judge.notna()).astype(int)
+    # 2. Shift the active judge by 1 to compare
+    prev_active_judge = active_judge.groupby(df[config.COL_CASE_ID]).shift(1)
+
+    # 3. A handover occurs when the active judge changes (and the previous active judge wasn't NaN)
+    df['judge_changed'] = ((active_judge != prev_active_judge) & prev_active_judge.notna()).astype(int)
+
+    # 4. Cumulative handovers (highly predictive of delays)
+    df['Count_handovers'] = df.groupby(config.COL_CASE_ID)['judge_changed'].cumsum()
 
     return df
