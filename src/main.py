@@ -86,7 +86,6 @@ if __name__ == "__main__":
     # 1. Update the base file parameters
     config.DATASET_PATH = custom_path
     config.RAW_FILENAME = custom_path.name
-    print("update",config.RAW_FILENAME)
     config.NAME = custom_path.stem
     config.MODEL_RESULTS_FILE = config.REPORTS_DIR / f"{config.NAME}_results.csv"
     config.TRANSLATED_FILENAME = f"{config.NAME}_translated.csv"

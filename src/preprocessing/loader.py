@@ -7,9 +7,8 @@ def load_data(filepath=None):
     Loads raw data and dynamically maps column schemas to ensure compatibility
     across different datasets (e.g., TJSP vs. US Federal Court data).
     """
-    print(config.DATA_DIR,config.RAW_FILENAME)
     if filepath is None:
-        filepath = config.DATA_DIR / config.RAW_FILENAME
+        filepath = config.DATASET_PATH
 
     print(f"- Loading: {filepath}")
     if not filepath.exists():
