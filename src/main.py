@@ -2,11 +2,12 @@ import argparse
 import pathlib
 
 import pandas as pd
+from sklearn.metrics import mean_absolute_error
 from src import config
 from preprocessing import loader, cleaner, translator
 from feature_engineering import transformers, workload
 from analysis import visualizer, stats
-from modeling import prep, train, dl_train
+from modeling import prep, train, dl_train, ablation
 
 
 def run_preprocessing():
@@ -33,6 +34,7 @@ def run_feature_engineering(df_phase1):
 def run_modeling(df_feat):
     print("\n Predictive Modeling (Tabular)")
     data_dict = prep.split_and_prepare_data(df_feat)
+    ablation.run_workload_ablation(data_dict)
 
     # 1. Run Tabular Experiments (RF / XGB)
     tabular_results, best_model, X_test, y_test = train.run_experiment(data_dict)
