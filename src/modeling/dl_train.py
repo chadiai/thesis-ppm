@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import pandas as pd
+import numpy as np
 from src import config
 from src.analysis import visualizer
 from src.modeling import dl_prep
@@ -106,10 +107,28 @@ def train_and_evaluate_lstm(train_loader, test_loader, embedding_sizes, num_cont
 
         print(f"  Epoch {epoch + 1:02d}/{epochs} | Train MAE: {train_mae:.2f} | Val MAE: {val_mae:.2f}")
 
-    print(f"\n--- LSTM Final Test MAE: {val_mae:.2f} days ---\n")
+    # Recalculate full errors on the final test set to get standard deviation
+    model.eval()
+    all_errors = []
+    with torch.no_grad():
+        for x_cat, x_cont, y, mask, _, _ in test_loader:
+            x_cat, x_cont, y, mask = x_cat.to(device), x_cont.to(device), y.to(device), mask.to(device)
+            preds = model(x_cat, x_cont)
+            loss_tensor = criterion(preds, y) * mask
+
+            # Flatten and keep only valid events (ignore padding)
+            loss_flat = loss_tensor.flatten()
+            mask_flat = mask.flatten()
+            valid_errors = loss_flat[mask_flat > 0]
+            all_errors.extend(valid_errors.cpu().numpy())
+
+    all_errors = np.array(all_errors)
+    final_mae = np.mean(all_errors)
+    final_std = np.std(all_errors)
+    print(f"\n--- LSTM Final Test MAE: {final_mae:.2f} ± {final_std:.2f} days ---\n")
 
     # Return the final metric AND the history
-    return val_mae, history
+    return final_mae, final_std, history
 
 
 def run_experiment(df_feat, data_dict):
@@ -167,7 +186,7 @@ def run_experiment(df_feat, data_dict):
             batch_size=64
         )
 
-        lstm_mae, history = train_and_evaluate_lstm(
+        lstm_mae, lstm_std, history = train_and_evaluate_lstm(
             train_loader,
             test_loader,
             embedding_sizes=embedding_sizes,
@@ -179,12 +198,13 @@ def run_experiment(df_feat, data_dict):
             "Model": "LSTM",
             "Scenario": scenario_name,
             "MAE": lstm_mae,
+            "STD": lstm_std,
             "Num_Features": len(cat_cols) + len(cont_cols)
         }])
 
         # Avoid the pandas deprecation warning by dropping empty/NA columns if any exist
         results_df = pd.concat([results_df, lstm_row], ignore_index=True)
         visualizer.plot_learning_curve(history, "LSTM", scenario_name)
-        print(f"  {scenario_name:40s} | MAE: {lstm_mae:.2f} days")
+        print(f"  {scenario_name:40s} | MAE: {lstm_mae:.2f} ± {lstm_std:.2f} days")
 
     return results_df

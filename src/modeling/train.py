@@ -2,7 +2,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 from xgboost import XGBRegressor
 from sklearn.metrics import mean_absolute_error
-
+import numpy as np
 from src.analysis import visualizer
 
 
@@ -131,7 +131,10 @@ def run_experiment(data_dict):
 
             # Evaluate
             mae = mean_absolute_error(y_test, y_pred)
-            print(f"  {scenario_name:40s} | MAE: {mae:.2f} days")
+            abs_errors = np.abs(y_test - y_pred)
+            std = np.std(abs_errors)
+
+            print(f"  {scenario_name:40s} | MAE: {mae:.2f} ± {std:.2f} days")
 
             # Plot the learning curve if history exists (XGBoost)
             if history:
@@ -141,6 +144,7 @@ def run_experiment(data_dict):
                 "Model": model_name.upper(),
                 "Scenario": scenario_name,
                 "MAE": mae,
+                "STD": std,
                 "Num_Features": len(features)
             })
 
