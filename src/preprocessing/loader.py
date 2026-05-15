@@ -14,8 +14,7 @@ def load_data(filepath=None):
     if not filepath.exists():
         raise FileNotFoundError(f"File not found: {filepath}")
 
-    # Use low_memory=False to handle the large number of attributes in the new CSV
-    df = pd.read_csv(filepath, encoding='utf-8', low_memory=False)
+    df = pd.read_csv(filepath, encoding='utf-8', engine='pyarrow')
 
     # Schema Adaptation: Maps the new CSV's columns to the repository's expected columns
     schema_mapping = {
