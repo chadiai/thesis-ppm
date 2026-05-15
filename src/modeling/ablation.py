@@ -14,15 +14,23 @@ def run_workload_ablation(data_dict):
     test_df = data_dict['test_df']
     target_col = 'remaining_time_days'
 
-    # EXACTLY the 18 features from your winning "Workload Features" scenario
-    winning_features = [
-        'order', 'digital', 'claim_amount', 'Weekday', 'Month',
-        'judge_changed', 'movement_te', 'status_te', 'area_te',
-        'subject_matter_te', 'control_te', 'class_te',
-        'distribution_date_te', 'court_department_te', 'judge_te',
-        'judge_type_te', 'judge_workload', 'workload_by_subject'
-    ]
+    # Dynamically select the "Workload Features" scenario based on the current dataset
+    all_cols = data_dict['feature_names']
 
+    # 1. Group features exactly as train.py does
+    f_counts = [c for c in all_cols if c.startswith('Count_')]
+    f_last_two = [c for c in all_cols if c in ['Last_event_ID_te', 'Second_last_event_ID_te']]
+    f_temporal = [c for c in all_cols if
+                  c in ['elapsed_time_days', 'time_since_last_event', 'prefix_length', 'Month_te', 'Weekday_te']]
+    f_workload = [c for c in all_cols if 'workload' in c]
+
+    # 2. Everything else is a Base Case Attribute
+    pipeline_generated = set(f_counts + f_last_two + f_temporal + f_workload)
+    f_attrs = [c for c in all_cols if c not in pipeline_generated]
+
+    # 3. Assemble the winning features (Base Attributes + Workload Features)
+    winning_features = [c for c in (f_attrs + f_workload) if c in train_df.columns]
+    
     y_train = train_df[target_col]
     y_test = test_df[target_col]
 
