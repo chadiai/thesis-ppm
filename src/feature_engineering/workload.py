@@ -12,6 +12,7 @@ def add_inter_case_features(df):
     if config.COL_RESOURCE not in df.columns or 'subject_matter' not in df.columns:
         return df
 
+    df[config.COL_DATE] = pd.to_datetime(df[config.COL_DATE]).astype('datetime64[ns]')
     df['subject_matter'] = df['subject_matter'].fillna('Unknown')
     df = df.dropna(subset=[config.COL_DATE]).sort_values(by=[config.COL_DATE])
 
